@@ -21,6 +21,6 @@ public class PaymentPage {
 
     public boolean confirmOrder() {
         page.locator("[data-qa='pay-button']").click();
-        return page.getByText("Congratulations! Your order has been placed successfully!").isVisible();
+        return page.getByText("Your order has been placed successfully!").isVisible();
     }
 }
