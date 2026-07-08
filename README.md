@@ -1,112 +1,87 @@
 # pet-tests-java
 
-Java-пет-проект: API + UI тесты против одного сайта — https://automationexercise.com
-(демо-магазин, специально сделан для практики автотестов; есть и полноценный UI, и открытый REST API без ключа).
+Пет-проект на Java: API + UI автотесты для одного сайта - https://automationexercise.com.
+Взял его специально, потому что там и нормальный UI-магазин, и открытый REST API без ключей и регистрации - удобно тренироваться на обоих сразу.
 
-- **API**: RestAssured + JUnit5 + Allure
-- **UI**: Playwright for Java + JUnit5 + Allure, Page Object Model
-- **E2E**: связка API + UI в одном тесте
+Стек:
+- API - RestAssured + JUnit5 + Allure
+- UI - Playwright for Java + JUnit5 + Allure, POM
+- плюс пара E2E-тестов, где API и UI работают вместе
 
-## Требования
+## Что нужно для запуска
 
-- JDK 17
-- Maven 3.8+
-
-Работает на Windows / macOS / Linux. API-тесты не зависят от ОС.
-UI-тесты на Windows/macOS обычно заводятся сразу после `install chromium` — Playwright ставит браузер
-со всеми зависимостями. На Linux (чистый Ubuntu/Debian) почти наверняка потребуется отдельно доставить
-системные библиотеки — см. ниже.
+JDK 17, Maven 3.8+. У меня всё крутится на Ubuntu, но код кроссплатформенный - API-тесты вообще без разницы, на чём гонять, а с UI на Windows/Mac обычно всё заводится сразу после `install chromium`. На Linux почти наверняка придётся доставить пару системных библиотек руками (см. ниже, сам через это прошёл).
 
 ## Запуск
 
 ```bash
-# один раз перед первым запуском UI-тестов — ставит браузеры Playwright
+# один раз, перед первым запуском UI-тестов
 mvn exec:java -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install chromium"
 
-mvn test                    # всё разом: api + ui + e2e
+mvn test                    # всё сразу
 mvn test -Dtest="tests.**"  # только API
 mvn test -Dtest="ui.**"     # только UI
-mvn test -Dtest="e2e.**"    # только E2E (API create -> UI login)
+mvn test -Dtest="e2e.**"    # E2E (создали через API - залогинились через UI)
 
-HEADED=true mvn test -Dtest="ui.**"   # по умолчанию headless; HEADED=true — с окном браузера
+HEADED=true mvn test -Dtest="ui.**"   # с окном браузера, а не headless
 
 mvn allure:serve
 ```
 
-Ключ/регистрация не нужны — все эндпоинты и страницы сайта открыты.
+Никаких ключей и регистраций не нужно, сайт полностью открытый.
 
-### Конфигурация URL
+### Если нужно сменить URL
 
-`base.url` берётся из `src/test/resources/config.properties`. Переопределить без правки файлов:
+`base.url` лежит в `src/test/resources/config.properties`. Переопределить можно без правки файлов:
 ```bash
-mvn test -Dbase.url=https://example.com   # точечный оверрайд
-mvn test -Denv=staging                    # подхватит config-staging.properties
+mvn test -Dbase.url=https://example.com
+mvn test -Denv=staging   # подхватит config-staging.properties
 ```
 
-### Системные зависимости (Linux)
+### Если Linux ругается на зависимости браузера
 
-Chromium от Playwright требует нескольких системных библиотек, которых может не быть на свежем Ubuntu/Debian.
-Если при запуске UI-тестов видишь `Host system is missing dependencies to run browsers`:
+Playwright'у нужны системные библиотеки, которых на чистом Ubuntu часто просто нет. Если видишь `Host system is missing dependencies to run browsers`:
 
 ```bash
 sudo mvn exec:java -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install-deps"
 ```
 
-Если команда не помогает (например, apt не может разрешить нужный пакет), ставь вручную по имени из вывода ошибки:
+Если не помогло (у меня один раз apt не нашёл нужный пакет под конкретную версию Ubuntu) - ставь вручную, имена смотри в тексте ошибки:
 ```bash
 sudo apt-get update
-sudo apt-get install -y libicu74 libvpx9 libavif16   # версии пакетов зависят от версии Ubuntu
+sudo apt-get install -y libicu74 libvpx9 libavif16
 ```
 
-## Структура
-
-```
-src/test/java/tests/                 — API-тесты
-  BaseTest.java                      — baseUri (из ConfigReader), allure-filter
-  ProductsApiTest.java               — productsList / brandsList / searchProduct (параметризован по терминам) + 405/400 негативы
-  AccountApiTest.java                — createAccount -> verifyLogin -> getUserDetailByEmail
-                                        -> updateAccount -> deleteAccount -> verifyLogin(404)
-                                        + параметризованный негатив (без email / без password)
-                                        (аккаунт создаётся с уникальным email на каждый прогон)
-
-src/test/java/ui/                    — UI-тесты (Page Object Model)
-  BaseUiTest.java                     — запуск браузера, контекст на тест, скриншот + Playwright-трейс
-                                         в Allure при падении (cleanup вынесен в TestWatcher,
-                                         чтобы не закрывать контекст до снятия скриншота/трейса)
-  SignupLoginTest.java                — параметризованный невалидный логин, полный цикл регистрация->логин->удаление
-  CartTest.java                       — добавление 1/2 товаров в корзину
-  CheckoutFlowTest.java               — регистрация -> корзина -> checkout -> оплата дамми-картой -> подтверждение
-  pages/SignupLoginPage.java
-  pages/AccountInfoPage.java
-  pages/AccountPage.java
-  pages/ProductsPage.java              — клик скоупится внутри карточки товара (.product-image-wrapper),
-                                          т.к. у каждого товара 2 элемента "Add to cart" (оверлей + под фото)
-  pages/CartPage.java
-  pages/CheckoutPage.java              — блок адреса/обзора заказа, комментарий, кнопка Place Order
-  pages/PaymentPage.java               — дамми-данные карты, подтверждение оплаты
-
-src/test/java/e2e/                   — сквозные тесты, комбинирующие API и UI в одном сценарии
-  ApiToUiLoginTest.java               — createAccount через API -> логин теми же данными через UI
-
-src/test/java/util/
-  ConfigReader.java                   — читает base.url из config.properties, поддержка -Denv= и -Dbase.url=
-
-src/test/resources/schemas/
-  products-list-schema.json          — json-schema валидация ответа productsList
+## Что где лежит
+src/test/java/tests/                 - API
+BaseTest.java                      - базовый спек, baseUri из ConfigReader
+ProductsApiTest.java               - productsList / brandsList / searchProduct (параметризован по терминам поиска) + негативы на 405/400
+AccountApiTest.java                - полный цикл аккаунта: создать, залогинить, проверить, обновить, удалить, убедиться, что удалился
+(email с UUID, чтобы прогоны не конфликтовали друг с другом)
+src/test/java/ui/                    - UI, Page Object Model
+BaseUiTest.java                     - браузер, контекст на каждый тест, скриншот + Playwright-трейс в Allure при падении
+(важно: закрытие контекста вынесено в TestWatcher, а не в @AfterEach,
+иначе к моменту скриншота контекст уже закрыт и снимать нечего)
+SignupLoginTest.java                - невалидный логин (параметризован), полный цикл регистрация, логин, удаление
+CartTest.java                       - корзина
+CheckoutFlowTest.java               - полный путь: регистрация, корзина, оформление, оплата дамми-картой, подтверждение
+pages/ProductsPage.java              - тут пришлось повозиться: у каждого товара на странице ДВА элемента "Add to cart"
+(один в оверлее на ховере, второй под фото), клик скоупится внутри карточки товара
+pages/CheckoutPage.java, PaymentPage.java, и остальные - стандартные POM-страницы
+src/test/java/e2e/
+ApiToUiLoginTest.java               - создаём аккаунт через API, логинимся под теми же данными через UI
+src/test/java/util/ConfigReader.java - читает base.url, поддерживает -Denv= и -Dbase.url=
 src/test/resources/
-  config.properties                  — base.url по умолчанию
-  config-staging.properties          — пример альтернативного окружения
+config.properties, config-staging.properties
+schemas/products-list-schema.json
+.github/workflows/ci.yml - прогон в GitHub Actions с allure-отчётом в артефактах
 
-.github/workflows/ci.yml — GitHub Actions: установка браузеров, allure-report артефакт
-```
+## Про связь API и UI
 
-## Связь API и UI
+У API и UI тестов свои независимые аккаунты (с уникальным UUID в почте), чтобы не мешать друг другу. Но есть отдельный `e2e/ApiToUiLoginTest`, который специально проверяет, что бэкенд и фронт не разъехались: создаёт юзера через API и логинится под ним через настоящий браузер.
 
-Помимо независимых наборов (у каждого свой аккаунт с UUID в email), есть выделенный E2E-тест
-(`e2e/ApiToUiLoginTest`), который явно проверяет согласованность бэкенда и фронта: аккаунт создаётся
-через API, а затем логин под теми же данными проверяется через реальный UI.
+## Заметки на будущее
 
-## Что дальше можно добавить
-- больше параметризованных негативных кейсов (невалидные email-форматы, XSS/SQLi в текстовых полях — в рамках учебных целей)
-- retry для нестабильных сетевых сбоев (изредка ловится `SSLHandshakeException` на стороне сайта)
-- видео полного прогона (`context.setVideoDir()` при создании контекста), не только трейс
+- Ещё бы параметризованных негативов - кривые email-форматы и всякое такое, чисто для практики
+- Один раз ловил `SSLHandshakeException` / `CircularRedirectException` при прогоне с домашнего компа - оказалось, это не баг в коде, а антибот-защита сайта душит старый Apache HttpClient (который под капотом у RestAssured) по TLS-отпечатку. Браузер и GitHub Actions с другого IP работают нормально. Если тесты внезапно перестали проходить локально, а в CI всё зелёное - вот в чём дело, а не в коде
+- Можно ещё сохранять видео прогона (`context.setVideoDir()`), а не только трейс - пока не делал

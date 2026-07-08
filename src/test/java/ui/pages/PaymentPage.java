@@ -1,5 +1,6 @@
 package ui.pages;
 
+import com.microsoft.playwright.Locator;
 import com.microsoft.playwright.Page;
 
 public class PaymentPage {
@@ -21,6 +22,11 @@ public class PaymentPage {
 
     public boolean confirmOrder() {
         page.locator("[data-qa='pay-button']").click();
-        return page.getByText("Your order has been placed successfully!").isVisible();
+
+        // isVisible() проверяет состояние немедленно и не ждёт перерисовки страницы после клика -
+        // без явного waitFor() проверка срабатывает раньше, чем сообщение успевает появиться
+        Locator successMessage = page.getByText("Your order has been placed successfully!");
+        successMessage.waitFor(new Locator.WaitForOptions().setTimeout(10000));
+        return successMessage.isVisible();
     }
 }
