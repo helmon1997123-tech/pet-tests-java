@@ -22,6 +22,7 @@ public class CheckoutPage {
 
     public PaymentPage placeOrder() {
         page.getByText("Place Order").click();
+        page.waitForLoadState();
         return new PaymentPage(page);
     }
 }

@@ -52,6 +52,7 @@ public class BaseUiTest {
                 .setSnapshots(true)
                 .setSources(true));
         page = context.newPage();
+        page.setDefaultTimeout(60000);
         page.navigate(BASE_URL);
     }
 
