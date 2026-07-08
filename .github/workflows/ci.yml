@@ -24,13 +24,21 @@ jobs:
       - name: Run tests
         run: mvn -B test
 
+      - name: Install Allure CLI
+        if: always()
+        run: |
+          curl -o allure-2.27.0.tgz -Ls https://github.com/allure-framework/allure2/releases/download/2.27.0/allure-2.27.0.tgz
+          tar -zxf allure-2.27.0.tgz
+          sudo mv allure-2.27.0 /opt/allure
+          sudo ln -s /opt/allure/bin/allure /usr/local/bin/allure
+
       - name: Generate Allure report
         if: always()
-        run: mvn -B allure:report
+        run: allure generate target/allure-results --clean -o target/allure-report
 
       - name: Upload Allure report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
-          path: target/site/allure-maven-plugin
+          path: target/allure-report
