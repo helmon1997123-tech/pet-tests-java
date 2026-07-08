@@ -23,7 +23,9 @@ public class PaymentPage {
     public boolean confirmOrder() {
         page.locator("[data-qa='pay-button']").click();
 
-        Locator successMessage = page.getByText("Your order has been placed successfully!");
+        // isVisible() проверяет состояние немедленно и не ждёт перерисовки страницы после клика -
+        // без явного waitFor() проверка срабатывает раньше, чем сообщение успевает появиться
+        Locator successMessage = page.getByText("Congratulations! Your order has been confirmed!");
         successMessage.waitFor(new Locator.WaitForOptions().setTimeout(30000));
         return successMessage.isVisible();
     }
